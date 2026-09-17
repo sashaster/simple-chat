@@ -2,13 +2,13 @@
 #include <vector>
 #include <csignal>
 
-#include "core/config.h"
-#include "core/logging.h"
-#include "server/server.h"
-#include "server/client.h"
+#include <Core/Config.h>
+#include <Core/Logging.h>
+#include <Core/Server.h>
+#include <Core/Client.h>
 
 
-int main(int argc, char* argv[]) {
+int main(const int argc, char* argv[]) {
     const std::vector<std::string_view> args(argv + 1, argv + argc);
     if (args.empty()) {
         std::exit(EXIT_FAILURE);
@@ -18,24 +18,24 @@ int main(int argc, char* argv[]) {
         std::exit(EXIT_FAILURE);
     }
     std::signal(SIGPIPE, SIG_IGN);
-    const auto cfg = config::Configuration(args);
-    const auto logger = logging::Logger(cfg.log_level);
-    logging::SetDefaultLogger(logger);
+    const auto cfg = Chat::Configuration(args);
+    const auto logger = Chat::Logger(cfg.logLevel);
+    Chat::SetDefaultLogger(logger);
     logger.Info("", cfg);
     if (app == "server") {
-        std::signal(SIGINT, &server::Server::Stop);
-        std::signal(SIGTERM, &server::Server::Stop);
-        auto server = server::Server(cfg);
+        std::signal(SIGINT, &Chat::Server::Stop);
+        std::signal(SIGTERM, &Chat::Server::Stop);
+        auto server = Chat::Server(cfg);
         server.Listen();
     }
     else {
-        auto client = client::Client(cfg);
-        std::signal(SIGINT, &client::Client::Disconnect);
-        std::signal(SIGTERM, &client::Client::Disconnect);
+        auto client = Chat::Client(cfg);
+        std::signal(SIGINT, &Chat::Client::Disconnect);
+        std::signal(SIGTERM, &Chat::Client::Disconnect);
         try {
             client.Connect();
         }catch (const std::exception& e) {
-            logging::GetLogger().Error(e.what());
+            Chat::GetLogger().Error(e.what());
         }}
 
     return 0;

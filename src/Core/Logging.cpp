@@ -1,7 +1,7 @@
-#include "core/logging.h"
+#include <Core/Logging.h>
 
 
-namespace logging {
+namespace Chat {
 
     std::ostream& operator<< (std::ostream &out, const LogLevel level) {
         switch (level) {
@@ -16,18 +16,18 @@ namespace logging {
         }
     }
 
-    static Logger default_logger = Logger(LogLevel::INFO);
+    static auto s_Logger = Logger(LogLevel::INFO);
 
     void SetDefaultLogger(const Logger &logger) {
         static auto logger_set = false;
         if (!logger_set) {
-            default_logger = logger;
+            s_Logger = logger;
             logger_set = true;
         }
     }
 
     Logger& GetLogger() {
-        return default_logger;
+        return s_Logger;
     }
 }
 

@@ -3,16 +3,15 @@
 #include <thread>
 #include <cstring>
 
-#include <server/server.h>
-#include <core/logging.h>
+#include <Core/Server.h>
+#include <Core/Logging.h>
 
 
-namespace server{
-    using namespace config;
-    using namespace logging;
+namespace Chat{
 
     ClientConnection::~ClientConnection() {
         if (socket >= 0) {
+            shutdown(socket, SHUT_RDWR);
             close(socket);
             GetLogger().Info(std::format("{} disconnected", addr));
         }
@@ -34,35 +33,35 @@ namespace server{
         return "Timeout";
     }
 
-    std::atomic<bool> Server::running = false;
+    std::atomic<bool> Server::s_Running = false;
 
-    Server::Server(const Configuration &config): m_socket(-1) {
-        m_conn.sin_family = AF_INET;
-        m_conn.sin_port = htons(config.port);
-        inet_pton(AF_INET, config.host.c_str(), &m_conn.sin_addr);
+    Server::Server(const Configuration &config): m_Socket(-1) {
+        m_Conn.sin_family = AF_INET;
+        m_Conn.sin_port = htons(config.port);
+        inet_pton(AF_INET, config.host.c_str(), &m_Conn.sin_addr);
     }
 
     void Server::Listen() {
         GetLogger().Info("Starting server...");
-        m_socket = socket(AF_INET, SOCK_STREAM, 0);
-        if (m_socket < 0)
+        m_Socket = socket(AF_INET, SOCK_STREAM, 0);
+        if (m_Socket < 0)
             throw std::runtime_error(std::strerror(errno));
-        if (bind(m_socket, reinterpret_cast<sockaddr *>(&m_conn), sizeof(m_conn)) < 0)
+        if (bind(m_Socket, reinterpret_cast<sockaddr *>(&m_Conn), sizeof(m_Conn)) < 0)
             throw std::runtime_error(std::strerror(errno));
-        listen(m_socket, 5);
-        running = true;
+        listen(m_Socket, 5);
+        s_Running = true;
         char ip[INET_ADDRSTRLEN];
-        inet_ntop(AF_INET, &m_conn.sin_addr, ip, INET_ADDRSTRLEN);
-        int port = ntohs(m_conn.sin_port);
+        inet_ntop(AF_INET, &m_Conn.sin_addr, ip, INET_ADDRSTRLEN);
+        int port = ntohs(m_Conn.sin_port);
         GetLogger().Info(std::format("Server listening on {}:{}", ip, port));
-        while (running) {
+        while (s_Running) {
             try {
                 auto client_conn = std::make_shared<ClientConnection>(Accept(1));
                 {
-                    m_connections.push_back(client_conn);
+                    m_Connections.push_back(client_conn);
                 }
                 GetLogger().Info(std::format("Client connected: {}", client_conn->addr));
-                m_workers.emplace_back(&Server::Handle, this, client_conn);
+                m_Workers.emplace_back(&Server::Handle, this, client_conn);
             }
             catch (const timeout_exception &e) {
                 continue;
@@ -76,31 +75,31 @@ namespace server{
     void Server::Broadcast(const std::string &message, const ClientConnection &sender){
         std::vector<std::shared_ptr<ClientConnection>> connections;
         {
-            std::lock_guard<std::mutex> lock(m_mutex);
-            connections = m_connections;
+            std::lock_guard lock(m_Mutex);
+            connections = m_Connections;
         }
-        for (const auto &client : connections) {
-            if (client->addr == sender.addr) {
+        for (const auto &recipient : connections) {
+            if (recipient->addr == sender.addr) {
                 continue;
             }
-            Send(message, *client, sender);
+            Send(message, *recipient, sender);
         }
     }
 
-    void Server::Send(const std::string &message, const ClientConnection &client, const ClientConnection &sender) const {
+    void Server::Send(const std::string &message, const ClientConnection &recipient, const ClientConnection &sender) const {
         const auto msg = sender.SendPrefix() + message;
-        if (send(client.socket, msg.data(), msg.length(), 0) < 0) {
+        if (send(recipient.socket, msg.data(), msg.length(), 0) < 0) {
             throw std::runtime_error(std::strerror(errno));
         }
-        GetLogger().Debug(client.ReceivePrefix() + message);
+        GetLogger().Debug(recipient.ReceivePrefix() + message);
     }
 
     void Server::Stop(int) {
-        running = false;
+        s_Running = false;
     }
 
     void Server::Handle(const std::shared_ptr<ClientConnection> client){
-        while (running) {
+        while (s_Running) {
             try {
                 const auto message = Receive(*client, 1);
                 if (!message) {
@@ -117,8 +116,8 @@ namespace server{
             }
         }
         {
-            std::lock_guard<std::mutex> lock(m_mutex);
-            std::erase(m_connections, client);
+            std::lock_guard lock(m_Mutex);
+            std::erase(m_Connections, client);
         }
     }
 
@@ -157,10 +156,10 @@ namespace server{
         }
         fd_set rfds;
         FD_ZERO(&rfds);
-        FD_SET(m_socket, &rfds);
+        FD_SET(m_Socket, &rfds);
 
         timeval tm{.tv_sec = timeout, .tv_usec = 0};
-        const int ready = select(m_socket + 1, &rfds, nullptr, nullptr, &tm);
+        const int ready = select(m_Socket + 1, &rfds, nullptr, nullptr, &tm);
 
         if (ready < 0) {
             if (errno == EINTR)
@@ -172,26 +171,22 @@ namespace server{
         }
         sockaddr_in client_address;
         socklen_t client_address_length = sizeof(client_address);
-        const int client_socket = accept(m_socket, reinterpret_cast<sockaddr*>(&client_address), &client_address_length);
+        const int client_socket = accept(m_Socket, reinterpret_cast<sockaddr*>(&client_address), &client_address_length);
         if (client_socket < 0)
             throw std::runtime_error(std::strerror(errno));
         char ip[INET_ADDRSTRLEN];
         inet_ntop(AF_INET, &client_address.sin_addr, ip, INET_ADDRSTRLEN);
         const int port = ntohs(client_address.sin_port);
-        return ClientConnection(client_socket, ip, port);
+        return {client_socket, ip, port};
     }
 
     Server::~Server() {
         GetLogger().Info("Stopping server...");
-        for (auto &worker: m_workers) {
-            if (worker.joinable()) {
-                worker.join();
-            }
+        if (m_Socket >= 0) {
+            close(m_Socket);
+            m_Socket = -1;
         }
-        if (!running) {
-            close(m_socket);
-            GetLogger().Info("Server stopped");
-        }
+        GetLogger().Info("Server stopped");
     }
 
 }

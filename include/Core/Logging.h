@@ -6,7 +6,7 @@
 #include <mutex>
 #include <format>
 
-namespace logging {
+namespace Chat {
     enum class LogLevel {
         ERROR,
         INFO,
@@ -17,18 +17,16 @@ namespace logging {
 
     class Logger {
     private:
-        LogLevel m_level;
-        static inline std::mutex m_mutex;
+        LogLevel m_Level;
+        static inline std::mutex m_Mutex;
 
     public:
-        Logger& operator=(const Logger &) = default;
-        Logger(const Logger &) = default;
-        Logger(LogLevel level): m_level(level) {}
+        explicit Logger(const LogLevel level): m_Level(level) {}
 
         template<typename... Args>
         void Log(const LogLevel level, const std::string_view message, const Args &... args) const {
-            if (m_level >= level) {
-                std::lock_guard<std::mutex> lock(m_mutex);
+            if (m_Level >= level) {
+                std::lock_guard lock(m_Mutex);
                 const auto timestamp = std::chrono::system_clock::now();
                 auto &out = (level == LogLevel::ERROR) ? std::cerr : std::cout;
                 out << std::format("{:%Y-%m-%d %H:%M:%S}", timestamp) << " [" << level << "] " << message << " ";

@@ -2,25 +2,24 @@
 #include <thread>
 #include <cstring>
 
-#include "server/client.h"
-#include "server/server.h"
+#include <Core/Client.h>
+#include <Core/Server.h>
 
-namespace client {
-    using namespace server;
+namespace Chat {
 
-    Client::Client(const Configuration &config): m_socket(0) {
-        m_server_conn.sin_family = AF_INET;
-        m_server_conn.sin_port = htons(config.port);
-        inet_pton(AF_INET, config.host.c_str(), &m_server_conn.sin_addr);
+    Client::Client(const Configuration &config): m_Socket(0) {
+        m_ServerConn.sin_family = AF_INET;
+        m_ServerConn.sin_port = htons(config.port);
+        inet_pton(AF_INET, config.host.c_str(), &m_ServerConn.sin_addr);
     }
 
     std::optional<std::string> Client::Receive(const int timeout) const {
         fd_set rfds;
         FD_ZERO(&rfds);
-        FD_SET(m_socket, &rfds);
+        FD_SET(m_Socket, &rfds);
 
         timeval tm{.tv_sec = timeout, .tv_usec = 0};
-        const int ready = select(m_socket + 1, &rfds, nullptr, nullptr, &tm);
+        const int ready = select(m_Socket + 1, &rfds, nullptr, nullptr, &tm);
 
         if (ready < 0) {
             if (errno == EINTR)
@@ -31,7 +30,7 @@ namespace client {
             throw timeout_exception();
         }
         std::string message(4096, ' ');
-        const int res = recv(m_socket, message.data(), message.size(), 0);
+        const auto res = recv(m_Socket, message.data(), message.size(), 0);
         if (res == 0) {
             return {};
         }
@@ -43,19 +42,19 @@ namespace client {
     }
 
     void Client::Connect() {
-        m_socket = socket(AF_INET, SOCK_STREAM, 0);
-        if (m_socket < 0) {
+        m_Socket = socket(AF_INET, SOCK_STREAM, 0);
+        if (m_Socket < 0) {
             throw std::runtime_error(std::strerror(errno));
         }
-        if (connect(m_socket, reinterpret_cast<sockaddr *>(&m_server_conn), sizeof(m_server_conn)) < 0) {
+        if (connect(m_Socket, reinterpret_cast<sockaddr *>(&m_ServerConn), sizeof(m_ServerConn)) < 0) {
             throw std::runtime_error(std::strerror(errno));
         }
-        connected = true;
-        m_reader = std::thread([this]() {
-            while (connected) {
+        s_Connected = true;
+        m_Reader = std::jthread([this]() {
+            while (s_Connected) {
                 try {
                     if (const auto message = Receive()) {
-                        std::lock_guard<std::mutex> lock(m_mutex);
+                        std::lock_guard<std::mutex> lock(m_Mutex);
                         std::cout <<'\r'<< *message << std::endl;
                         std::cout << ">" << std::flush;
                     }
@@ -68,10 +67,10 @@ namespace client {
             }
         });
 
-        while (connected) {
+        while (s_Connected) {
             try {
                 {
-                    std::lock_guard<std::mutex> lock(m_mutex);
+                    std::lock_guard lock(m_Mutex);
                     std::cout << "\r>" << std::flush;
                 }
                 std::string msg;
@@ -86,11 +85,11 @@ namespace client {
     }
 
     void Client::Disconnect(int) {
-        connected = false;
+        s_Connected = false;
     }
 
     void Client::Send(const std::string_view message) const {
-        if (send(m_socket, message.data(), message.length(), 0) < 0) {
+        if (send(m_Socket, message.data(), message.length(), 0) < 0) {
             throw std::runtime_error(std::strerror(errno));
         }
         GetLogger().Debug(std::format("server<- {}", message));
@@ -98,15 +97,14 @@ namespace client {
 
     Client::~Client() {
         GetLogger().Info("Disconnecting from server...");
-        if (m_reader.joinable()) {
-            m_reader.join();
-        }
-        if (!connected) {
-            close(m_socket);
+        shutdown(m_Socket, SHUT_RDWR);
+        if (m_Socket >= 0) {
+            close(m_Socket);
+            m_Socket = -1;
             GetLogger().Info("Disconnected from server");
         }
     }
 
-    std::atomic<bool> Client::connected = false;
+    std::atomic<bool> Client::s_Connected = false;
 
 }

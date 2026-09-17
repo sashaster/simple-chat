@@ -1,11 +1,9 @@
 #include <iostream>
 
-#include "core/config.h"
+#include <Core/Config.h>
 
 
-namespace config {
-
-    using namespace logging;
+namespace Chat {
 
     Configuration::Configuration(const std::vector<std::string_view> &args) {
         const auto split = [](const std::string_view arg, const std::string_view separator)-> std::pair<std::string_view, std::string_view> {
@@ -22,7 +20,7 @@ namespace config {
         for (const auto arg: args) {
             const auto res = split(arg, "=");
             if (res.first == "--log-level" && !res.second.empty() && !log_level_set) {
-                log_level = ParseLogLevel(res.second);
+                logLevel = ParseLogLevel(res.second);
                 log_level_set = true;
             }
             if (res.first == "--port" && !res.second.empty() && !port_set) {
@@ -35,7 +33,7 @@ namespace config {
             }
         }
         if (!log_level_set)
-            log_level = LogLevel::INFO;
+            logLevel = LogLevel::INFO;
         if (!port_set)
             port = 8080;
         if (!host_set)
@@ -43,7 +41,7 @@ namespace config {
     }
 
     std::ostream& operator<<(std::ostream &out, const Configuration &config) {
-       return out << "Configuration{log-level=" << config.log_level <<
+       return out << "Configuration{log-level=" << config.logLevel <<
            " port=" << config.port << " host=" << config.host << "}";
     }
 
