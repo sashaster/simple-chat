@@ -138,7 +138,7 @@ namespace Chat{
             throw timeout_exception();
         }
         std::string message(4096, ' ');
-        const int res = recv(client.socket, message.data(), message.size(), 0);
+        const auto res = recv(client.socket, message.data(), message.size(), 0);
         if (res == 0) {
             return {};
         }

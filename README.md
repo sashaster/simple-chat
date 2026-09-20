@@ -1,8 +1,8 @@
-[![CI](https://github.com/Sashaster/simple-chat/actions/workflows/ci.yml/badge.svg?branch=main&event=push)](https://github.com/Sashaster/simple-chat/actions/workflows/ci.yml) ![GitHub repo size](https://img.shields.io/github/repo-size/Sashaster/simple-chat) ![Static Badge](https://img.shields.io/badge/3.14-violet?style=flat&logo=cmake&logoColor=%23064F8C&label=CMake) ![Static Badge](https://img.shields.io/badge/linux-grey?logo=linux&logoColor=gold)
+[![CI](https://github.com/Sashaster/simple-chat/actions/workflows/ci.yml/badge.svg?branch=main&event=push)](https://github.com/Sashaster/simple-chat/actions/workflows/ci.yml) ![Static Badge](https://img.shields.io/badge/3.14+-violet?style=flat&logo=cmake&logoColor=%23064F8C&label=CMake) ![Static Badge](https://img.shields.io/badge/linux-grey?logo=linux&logoColor=gold)
 
 # Simple chat
 
-<sub>A client/server chat application build with sockets in C++.</sub>
+<sub>A client/server chat application built with sockets in C++.</sub>
 
 ---
 

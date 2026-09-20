@@ -1,5 +1,5 @@
-#include "Core/Config.h"
-#include "Core/Logging.h"
+#include <Core/Config.h>
+#include <Core/Logging.h>
 #include <gtest/gtest.h>
 
 using namespace Chat;
