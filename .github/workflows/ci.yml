@@ -16,6 +16,9 @@ jobs:
           path: build/_deps
           key: ${{runner.os}}-${{hashFiles('CMakeLists.txt')}}
       - name: Configure and build
+        env:
+          CC: gcc-14
+          CXX: g++-14
         run: |
           cmake -B build -DCMAKE_BUILD_TYPE=Release
           cmake --build build
