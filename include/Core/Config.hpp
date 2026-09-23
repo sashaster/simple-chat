@@ -1,11 +1,9 @@
-
-#ifndef CHAT_CONFIG_H
-#define CHAT_CONFIG_H
+#pragma once
 
 #include <string_view>
 #include <vector>
 
-#include <Core/Logging.h>
+#include <Core/Logging.hpp>
 
 namespace Chat {
 
@@ -18,9 +16,4 @@ namespace Chat {
         static LogLevel ParseLogLevel(std::string_view level);
     };
 
-    std::ostream& operator<<(std::ostream &out, const Configuration &config);
-
 }
-
-
-#endif

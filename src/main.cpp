@@ -2,10 +2,10 @@
 #include <vector>
 #include <csignal>
 
-#include <Core/Config.h>
-#include <Core/Logging.h>
-#include <Core/Server.h>
-#include <Core/Client.h>
+#include <Core/Config.hpp>
+#include <Core/Logging.hpp>
+#include <Core/Server.hpp>
+#include <Core/Client.hpp>
 
 
 int main(const int argc, char* argv[]) {
@@ -21,12 +21,16 @@ int main(const int argc, char* argv[]) {
     const auto cfg = Chat::Configuration(args);
     const auto logger = Chat::Logger(cfg.logLevel);
     Chat::SetDefaultLogger(logger);
-    logger.Info("", cfg);
+    logger.Info("Host: {}, port: {}, logLevel: {}", cfg.host, cfg.port, Chat::LogLevelToString(cfg.logLevel));
     if (app == "server") {
-        std::signal(SIGINT, &Chat::Server::Stop);
-        std::signal(SIGTERM, &Chat::Server::Stop);
-        auto server = Chat::Server(cfg);
-        server.Listen();
+        std::signal(SIGINT, &Chat::Server::Shutdown);
+        std::signal(SIGTERM, &Chat::Server::Shutdown);
+        try {
+            auto server = Chat::Server(cfg);
+            server.Listen();
+        }catch (const std::exception& e) {
+            Chat::GetLogger().Error("{}", e.what());
+        }
     }
     else {
         auto client = Chat::Client(cfg);
@@ -35,7 +39,7 @@ int main(const int argc, char* argv[]) {
         try {
             client.Connect();
         }catch (const std::exception& e) {
-            Chat::GetLogger().Error(e.what());
+            Chat::GetLogger().Error("{}", e.what());
         }}
 
     return 0;

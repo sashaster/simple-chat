@@ -1,22 +1,9 @@
-#include <Core/Logging.h>
+#include <Core/Logging.hpp>
 
 
 namespace Chat {
 
-    std::ostream& operator<< (std::ostream &out, const LogLevel level) {
-        switch (level) {
-            case LogLevel::INFO:
-                return out << "INFO";
-            case LogLevel::DEBUG:
-                return out << "DEBUG";
-            case LogLevel::ERROR:
-                return out << "ERROR";
-           default:
-                return out << "INFO";
-        }
-    }
-
-    static auto s_Logger = Logger(LogLevel::INFO);
+    static auto s_Logger = Logger(LogLevel::Info);
 
     void SetDefaultLogger(const Logger &logger) {
         static auto logger_set = false;

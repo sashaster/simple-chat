@@ -1,6 +1,6 @@
 #include <iostream>
 
-#include <Core/Config.h>
+#include <Core/Config.hpp>
 
 
 namespace Chat {
@@ -18,41 +18,36 @@ namespace Chat {
         bool port_set = false;
         bool host_set = false;
         for (const auto arg: args) {
-            const auto res = split(arg, "=");
-            if (res.first == "--log-level" && !res.second.empty() && !log_level_set) {
-                logLevel = ParseLogLevel(res.second);
+            const auto [fst, snd] = split(arg, "=");
+            if (fst == "--log-level" && !snd.empty() && !log_level_set) {
+                logLevel = ParseLogLevel(snd);
                 log_level_set = true;
             }
-            if (res.first == "--port" && !res.second.empty() && !port_set) {
-                port = std::stoi(std::string(res.second));
+            if (fst == "--port" && !snd.empty() && !port_set) {
+                port = std::stoi(std::string(snd));
                 port_set = true;
             }
-            if (res.first == "--host" && !res.second.empty() && !host_set) {
-                host = res.second;
+            if (fst == "--host" && !snd.empty() && !host_set) {
+                host = snd;
                 host_set = true;
             }
         }
         if (!log_level_set)
-            logLevel = LogLevel::INFO;
+            logLevel = LogLevel::Info;
         if (!port_set)
             port = 8080;
         if (!host_set)
             host = "127.0.0.1";
     }
 
-    std::ostream& operator<<(std::ostream &out, const Configuration &config) {
-       return out << "Configuration{log-level=" << config.logLevel <<
-           " port=" << config.port << " host=" << config.host << "}";
-    }
-
     LogLevel Configuration::ParseLogLevel(const std::string_view level) {
         if (level == "debug")
-            return LogLevel::DEBUG;
+            return LogLevel::Debug;
         if (level == "info")
-            return LogLevel::INFO;
+            return LogLevel::Info;
         if (level == "error")
-            return LogLevel::ERROR;
-        return LogLevel::INFO;
+            return LogLevel::Error;
+        return LogLevel::Info;
     }
 
 }
